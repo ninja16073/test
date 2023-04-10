@@ -1,47 +1,47 @@
-import easyocr as ocr  #OCR
-import streamlit as st  #Web App
-from PIL import Image #Image Processing
-import numpy as np #Image Processing 
+from llama_index import SimpleDirectoryReader, GPTListIndex, readers, GPTSimpleVectorIndex, LLMPredictor, PromptHelper, ServiceContext
+from langchain import OpenAI
+import sys
+import os
+import streamlit as st
 
-#title
-st.title("Easy OCR - Extract Text from Images")
-
-#subtitle
-st.markdown("## Optical Character Recognition - Using `easyocr`, `streamlit` -  hosted on 🤗 Spaces")
-
-st.markdown("Link to the app - [image-to-text-app on 🤗 Spaces](https://huggingface.co/spaces/Amrrs/image-to-text-app)")
-
-#image uploader
-image = st.file_uploader(label = "Upload your image here",type=['png','jpg','jpeg'])
+os.environ["OPENAI_API_KEY"] = st.secrets["openai_key"]
 
 
-@st.cache
-def load_model(): 
-    reader = ocr.Reader(['en'],model_storage_directory='.')
-    return reader 
 
-reader = load_model() #load model
+def construct_index(directory_path):
+    # set maximum input size
+    max_input_size = 100
+    # set number of output tokens
+    num_outputs = 100
+    # set maximum chunk overlap
+    max_chunk_overlap = 20
+    # set chunk size limit
+    chunk_size_limit = 600 
 
-if image is not None:
+    # define prompt helper
+    prompt_helper = PromptHelper(max_input_size, num_outputs, max_chunk_overlap, chunk_size_limit=chunk_size_limit)
 
-    input_image = Image.open(image) #read image
-    st.image(input_image) #display image
+    # define LLM
+    llm_predictor = LLMPredictor(llm=OpenAI(temperature=0.5, model_name="text-babbage-001", max_tokens=num_outputs))
+ 
+    documents = SimpleDirectoryReader(directory_path).load_data()
+    
+    service_context = ServiceContext.from_defaults(llm_predictor=llm_predictor, prompt_helper=prompt_helper)
+    index = GPTSimpleVectorIndex.from_documents(documents, service_context=service_context)
 
-    with st.spinner("🤖 AI is at Work! "):
-        
+    index.save_to_disk('index.json')
 
-        result = reader.readtext(np.array(input_image))
+    return index
 
-        result_text = [] #empty list for results
+construct_index("context_data/data")
 
-
-        for text in result:
-            result_text.append(text[1])
-
-        st.write(result_text)
-    #st.success("Here you go!")
-    st.balloons()
-else:
-    st.write("Upload an Image")
-
-st.caption("Made with ❤️ by @1littlecoder. Credits to 🤗 Spaces for Hosting this ")
+import gradio as gr
+def ask_ai(AskAnythingAboutShreyaAndIshan):
+    index = GPTSimpleVectorIndex.load_from_disk('index.json')
+    while True: 
+        response = index.query(AskAnythingAboutShreyaAndIshan)
+       
+        return response
+      
+demo = gr.Interface(fn=ask_ai, inputs="text", outputs="text")
+demo.launch()
