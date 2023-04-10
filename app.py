@@ -4,7 +4,7 @@ import sys
 import os
 import streamlit as st
 
-os.environ["OPENAI_API_KEY"] = st.secrets["openai_key"]
+os.environ["OPENAI_API_KEY"] = st.secrets["OPEN_AI_KEY"]
 
 
 
