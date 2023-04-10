@@ -1,5 +1,6 @@
 streamlit
-opencv-python-headless
+llama-index
+langchain
+gradio
 numpy
-easyocr
 Pillow
